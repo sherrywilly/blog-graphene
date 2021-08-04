@@ -1,0 +1,9 @@
+django
+django_editorjs_fields
+graphene-django
+psycopg2
+psycopg2-binary
+django-filter
+django-mptt
+pillow
+graphene-file-upload
