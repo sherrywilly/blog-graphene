@@ -6,6 +6,7 @@ from django_editorjs_fields import EditorJsJSONField
 from mptt.models import  MPTTModel,TreeForeignKey
 from PIL import  Image
 from django.core.files.storage import FileSystemStorage
+
 class Tag(models.Model):
     name = models.CharField(max_length=50)
 
