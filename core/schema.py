@@ -8,13 +8,14 @@ from graphene_file_upload.scalars import Upload
 from graphql import GraphQLError
 from graphql_auth import mutations
 from .models import Tag, Article, Category
+from graphql_jwt.decorators import login_required,superuser_required
 
 
 class TagNode(DjangoObjectType):
     class Meta:
         model = Tag
         interfaces = (Node,)
-        filter_fields = ['name', 'tags']
+        filter_fields = ['name', 'articles']
 
 
 class CategoryNode(DjangoObjectType):
@@ -49,11 +50,20 @@ class Query(graphene.ObjectType):
 
     category = Node.Field(CategoryNode)
     all_categorys = DjangoFilterConnectionField(CategoryNode)
+    all_parent_categories = DjangoFilterConnectionField(CategoryNode)
+    all_childs_by_parent_category = DjangoFilterConnectionField(CategoryNode,id= graphene.Int())
+
+
 
     article = Node.Field(ArticleNode)
     all_articles = DjangoFilterConnectionField(ArticleNode)
 
+    def resolve_all_parent_categories(self, info):
+        return Category.objects.all().exclude(parent__isnull=True)
 
+    def resolve_all_childs_by_parent_category(self, info,id):
+        print(id)
+        return Category.objects.filter(parent_id = id,).exclude(id=id)
 class TagMutation(graphene.Mutation):
     class Arguments:
         name = graphene.String(required=True)
@@ -62,6 +72,7 @@ class TagMutation(graphene.Mutation):
     tag = graphene.Field(TagNode)
 
     @classmethod
+    @superuser_required
     def mutate(cls, root, info, name, id=None):
         if id is not None:
             tag = Tag.objects.get(id=id)
@@ -80,6 +91,8 @@ class CategoryMutation(graphene.Mutation):
 
     category = graphene.Field(CategoryNode)
 
+    @login_required
+    @superuser_required
     @classmethod
     def mutate(cls, self, info,name ,parent_id=None,id= None):
 
@@ -94,7 +107,6 @@ class CategoryMutation(graphene.Mutation):
 class TagInputType(graphene.InputObjectType):
     tag_id = graphene.ID()
 
-
 class ArticleMutation(graphene.Mutation):
     class Arguments:
         id = graphene.ID()
@@ -104,34 +116,40 @@ class ArticleMutation(graphene.Mutation):
         featured_img = Upload()
         # tag_input: {tagId: "U291cmNlVmlkZW9Ob2RlOjE1,U291cmNlVmlkZW9Ob2RlOjE0,"}
         category_id = graphene.Int(required=True)
-        tag_input = TagInputType()
+        tag_input = graphene.List(TagInputType)
 
     article = graphene.Field(ArticleNode)
 
     @classmethod
+    @login_required
+    @superuser_required
     def mutate(cls,self,info,title,content,category_id,**kwargs):
         id = kwargs.get('id',None)
         published = kwargs.get('published',False)
-        tag_list = kwargs.get('tag_input',None)
+        tag_list = kwargs.get('tag_input',[])
 
         if id is not None:
             article = Article.objects.get(id =id)
         else:
-            aricle = Article()
+            article = Article()
         article.title = title
         article.content = content
-        aricle.published = published
+        article.published = published
         try:
             article.featured_img = info.context.FILES['featured_img']
-        # except Exception as e :
-        #     print(e)
+
         except:
             raise GraphQLError("unable to get the image")
 
         article.category_id = category_id
-        for _i in tag_list:
-            article.tag.add(_i['tagId'])
+        print(tag_list)
         article.save()
+        for _i in tag_list:
+            _inum = _i['tag_id']
+            try:
+                article.tag.add(_inum)
+            except Exception as e:
+                print(e)
         return ArticleMutation(article = article)
 
 

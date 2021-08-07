@@ -71,7 +71,7 @@ class Article(models.Model):
     featured_img = models.ImageField(upload_to='feature_images/',blank=True,null=True)
     featured_mob_img = models.ImageField(upload_to='feature_mob_images/',blank=True,null=True)
     updated_on = models.DateTimeField(auto_now=True,blank=True,null=True)
-    tag = models.ManyToManyField(Tag,related_name='tags')
+    tag = models.ManyToManyField(Tag,related_name='articles',blank=True)
     category = TreeForeignKey('Category',null=True,blank=True,on_delete=models.DO_NOTHING,related_name='category')
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -87,7 +87,6 @@ class Article(models.Model):
         new_img = (300, 300)
         img.thumbnail(new_img)
         img.save(self.featured_mob_img.path)
-
         return "True"
 
 
